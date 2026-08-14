@@ -549,18 +549,19 @@ function UploadModal({
 
     for (const file of selectedFiles) {
       try {
-        const validation = validateMediaFile(file, 'image');
+        const validation = validateMediaFile(file, STORAGE_BUCKETS.SITE_IMAGES);
         if (!validation.valid) {
           toast({ type: 'error', message: `${file.name}: ${validation.error}` });
           continue;
         }
 
         const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const publicUrl = await uploadToStorage(
+        const uploadResult = await uploadToStorage(
           STORAGE_BUCKETS.SITE_IMAGES,
           file,
           'media-library'
         );
+        const publicUrl = uploadResult.publicUrl;
 
         const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
         const fileType = imageExts.includes(ext)
