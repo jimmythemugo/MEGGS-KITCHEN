@@ -1,0 +1,6 @@
+{
+  "name": "MEGGS KITCHEN",
+  "description": "Enterprise Kitchenware & Culinary Equipment Marketplace — Premium Commercial & Home Appliances, Cookware, & Tableware",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
