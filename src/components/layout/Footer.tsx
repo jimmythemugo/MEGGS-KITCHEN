@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
-import { Phone, Mail, MapPin, Facebook, Instagram, Linkedin, Twitter, Send, CheckCircle2, ShieldCheck, Truck, Headphones, CreditCard } from 'lucide-react';
+import { Phone, Mail, MapPin, Send, CheckCircle2, ShieldCheck, Truck, Headphones, CreditCard } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Twitter } from '@/components/ui/brand-icons';
 import { useSiteSettings, useCategories } from '@/hooks/use-data';
 import { telHref } from '@/lib/utils';
 

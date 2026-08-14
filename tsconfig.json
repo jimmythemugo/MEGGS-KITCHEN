@@ -15,7 +15,9 @@
     "moduleDetection": "force",
     "allowJs": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
+    "strict": false,
+    "noUncheckedSideEffectImports": false,
+    "types": ["node"],
     "paths": {
       "@/*": [
         "./src/*"

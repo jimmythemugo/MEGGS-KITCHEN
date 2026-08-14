@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Phone, Mail, MapPin, Clock, Send, Facebook, Instagram, Linkedin } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, Send } from 'lucide-react';
+import { Facebook, Instagram, Linkedin } from '@/components/ui/brand-icons';
 import { CustomerLayout } from '@/components/layout/CustomerLayout';
 import { useToast } from '@/hooks/use-toast';
 import { useSiteSettings } from '@/hooks/use-data';

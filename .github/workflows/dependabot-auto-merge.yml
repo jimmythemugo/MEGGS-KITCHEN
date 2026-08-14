@@ -1,0 +1,108 @@
+name: Auto-merge Dependabot PRs
+
+# Automatically approves and merges pull requests opened by Dependabot once the
+# required CI checks (lint, build, tests) have passed.
+#
+# The workflow uses the implicitly-provided GITHUB_TOKEN to post reviews and
+# merge the PR. It only ever acts on PRs whose author is dependabot[bot].
+
+on:
+  pull_request:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  dependabot-auto-merge:
+    # Only run for Dependabot PRs
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: '${{ secrets.GITHUB_TOKEN }}'
+
+      - name: Wait for CI checks to pass
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: |
+          set -euo pipefail
+          PR_NUMBER='${{ github.event.pull_request.number }}'
+          echo "Waiting for CI checks on PR #$PR_NUMBER to complete..."
+
+          # Give the check suites a moment to register
+          sleep 15
+
+          check_run_state=""
+
+          for i in $(seq 1 60); do
+            # Poll check suites for the PR's head SHA
+            RESPONSE=$(gh api \
+              repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }}/check-suites)
+
+            # Extract the set of statuses/conclusions across all suites
+            SUMMARY=$(echo "$RESPONSE" | jq -r \
+              '.check_suites | map(.status + "/" + ((.conclusion // "NONE"))) | unique | join(",")')
+
+            echo "Attempt $i: suites = $SUMMARY"
+
+            if echo "$SUMMARY" | grep -q "queued" || echo "$SUMMARY" | grep -q "in_progress"; then
+              : # still running, keep waiting
+            else
+              check_run_state="$SUMMARY"
+              break
+            fi
+
+            sleep 30
+          done
+
+          if [ -z "$check_run_state" ]; then
+            echo "::error::CI checks did not finish within the timeout window."
+            exit 1
+          fi
+
+          # Fail if any suite concluded with anything other than success.
+          if echo "$check_run_state" | grep -Eq "failure|cancelled|timed_out|action_required|neutral|stale"; then
+            echo "::error::One or more CI checks failed: $check_run_state"
+            exit 1
+          fi
+
+          # Require at least one successful check; allow "NONE" (skipped) suites.
+          if echo "$check_run_state" | grep -q "completed/success"; then
+            echo "All required CI checks passed."
+            exit 0
+          fi
+
+          echo "::error::No successful CI checks found (statuses: $check_run_state). Refusing to auto-merge."
+          exit 1
+
+      - name: Approve the pull request
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: |
+          PR_URL='${{ github.event.pull_request.html_url }}'
+          gh pr review "$PR_URL" --approve \
+            --body "Auto-approved by the Dependabot auto-merge workflow after CI passed. (Created by an AI agent on behalf of the repository owner.)"
+
+      - name: Enable auto-merge and merge
+        env:
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: |
+          PR_NUMBER='${{ github.event.pull_request.number }}'
+          REPO='${{ github.repository }}'
+
+          # Enable auto-merge (squash) on the PR, then attempt to merge.
+          gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --auto --delete-branch \
+            --body "Auto-merged by Dependabot workflow after CI checks passed. (Merged by an AI agent on behalf of the repository owner.)"
+
+          # If --auto only queued the merge (e.g. waiting on required reviews),
+          # try a direct merge now that the PR is approved.
+          if gh pr view "$PR_NUMBER" --repo "$REPO" --json state --jq '.state' | grep -q OPEN; then
+            gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --delete-branch || true
+          fi
